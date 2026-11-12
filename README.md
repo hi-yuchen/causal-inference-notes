@@ -2,7 +2,7 @@
 
 [在线阅读中文讲义](https://hi-yuchen.github.io/causal-inference-notes/) · [第一篇原文](01-probability.md)
 
-概率论与统计基础、从 OLS 到因果识别、RCT、RDD、DID、IV，以及控制变量、固定效应和标准误专题。七个章节文件均可直接在 GitHub 阅读。离线阅读请用浏览器打开 `index.html`。
+概率论与统计基础、从 OLS 到因果识别、RCT、RDD、DID、IV，以及控制变量、固定效应和标准误专题。首页为全书目录，七章各有独立 HTML 页面。每章提供本章目录、前后章导航以及全书检索。下载并解压仓库后，打开 `index.html` 即可离线阅读。
 
 ## 构建与练习
 
