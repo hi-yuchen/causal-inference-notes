@@ -27,9 +27,18 @@ for n, path in enumerate(paths, 1):
             dest = paths[int(chapter)-1].with_suffix(".html").name
             return f"[{match.group()}]({dest}#c{chapter}-s{section})"
         linked_body = re.sub(r"第 (\d+)\.(\d+) 节", section_link, body)
+        subsections = []
+        def subsection_link(match):
+            subtitle = match.group(1)
+            subanchor = f"{anchor}-d{len(subsections)+1}"
+            subsections.append((subtitle, subanchor))
+            return f"### {subtitle} {{#{subanchor}}}"
+        linked_body = re.sub(r"(?m)^### (.+)$", subsection_link, linked_body)
         source.append(f"## {heading} {{#{anchor}}}\n{linked_body}")
-        sections.append((heading, anchor))
-        index.append([heading, url+"#"+anchor, re.sub(r"\s+", " ", body).lower()])
+        sections.append((heading, anchor, subsections))
+        passages = re.split(r"(?m)^### .+$", body)
+        for (caption, target), passage in zip([(heading, anchor), *subsections], passages):
+            index.append([caption, url+"#"+target, re.sub(r"\s+", " ", passage).lower()])
     result = subprocess.run(["pandoc", "-f", "markdown-smart", "-t", "html5", "--mathml", "--wrap=none"],
                             input="\n".join(source), text=True, capture_output=True, check=True)
     if result.stderr.strip():
@@ -38,6 +47,14 @@ for n, path in enumerate(paths, 1):
 OUT.mkdir(exist_ok=True)
 def link(url, title):
     return f'<a href="{escape(url, quote=True)}">{escape(title)}</a>'
+
+def contents(sections, prefix):
+    items = []
+    for title, anchor, subsections in sections:
+        children = "".join("<li>"+link(prefix+"#"+key, caption)+"</li>" for caption, key in subsections)
+        nested = "<ul>"+children+"</ul>" if children else ""
+        items.append("<li>"+link(prefix+"#"+anchor, title)+nested+"</li>")
+    return "".join(items)
 
 def render(file, title, active, body):
     nav = []
@@ -49,7 +66,7 @@ def render(file, title, active, body):
 
 cards = []
 for n, (name, url, sections, fragment) in enumerate(chapters, 1):
-    toc = "".join("<li>"+link("#"+anchor, title)+"</li>" for title, anchor in sections)
+    toc = contents(sections, "")
     previous = link(chapters[n-2][1], "← "+chapters[n-2][0]) if n>1 else link("index.html", "← 全书目录")
     following = link(chapters[n][1], chapters[n][0]+" →") if n<len(chapters) else link("index.html", "全书目录 →")
     label = "第"+"一二三四五六七"[n-1]+"章"
@@ -59,7 +76,7 @@ for n, (name, url, sections, fragment) in enumerate(chapters, 1):
     case = sections[-1][0].split(" ", 1)[1]
     cards.append(f'<section class="card"><span class="eyebrow">{label}</span><h2>{link(url,name)}</h2>'
                  +f'<p>{escape(case)}</p><details><summary>本章 {len(sections)} 节</summary><ul>'
-                 +"".join("<li>"+link(url+"#"+anchor, title)+"</li>" for title, anchor in sections)+"</ul></details></section>")
+                 +contents(sections, url)+"</ul></details></section>")
 intro = '<header><span class="eyebrow">计量经济学讲义</span><h1>'+BOOK+'</h1><p>概率与统计推断、线性投影和政策评估的识别条件。</p></header>'
 render("index.html", BOOK+" · 全书目录", 0, intro+'<div class="cards">'+''.join(cards)+'</div>')
 routes = [c[1] for c in chapters]
@@ -75,7 +92,7 @@ searchBox.addEventListener('input', () => {
   const matches = query ? bookSections.filter(([title, url, body]) => (title.toLowerCase()+' '+body).includes(query)) : [];
   const list = document.querySelector('#results');
   list.replaceChildren();
-  document.querySelector('#status').textContent = query ? '匹配 '+matches.length+' 节' : '';
+  document.querySelector('#status').textContent = query ? '匹配 '+matches.length+' 处' : '';
   for (const [title, url] of matches) {
     const row = document.createElement('li');
     const a = document.createElement('a');
